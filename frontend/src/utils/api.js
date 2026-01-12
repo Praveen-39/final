@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
+const API_URL = import.meta.env.VITE_API_URL || "https://final-022d.onrender.com/api/v1";
 
 export const checkHealth = async () => {
     try {
