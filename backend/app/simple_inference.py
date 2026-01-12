@@ -244,6 +244,19 @@ def run_inference(audio_bytes: bytes, sample_rate: int = None):
     print(f"SIMPLIFIED INFERENCE (No PyTorch)")
     print(f"Processing audio: {len(audio_bytes)} bytes")
     
+    # Initialize defaults
+    emotion = "neutral"
+    confidence = 0.5
+    is_sarcastic = False
+    sarcasm_score = 0.0
+    final_transcript = "Audio processed with limited analysis"
+    audio_features = {
+        'pitch_mean': 0,
+        'energy_mean': 0,
+        'spectral_centroid': 2000,
+        'speaking_rate': 0
+    }
+    
     try:
         # 1. Load audio - Try different methods
         print("Loading audio...")
@@ -308,12 +321,6 @@ def run_inference(audio_bytes: bytes, sample_rate: int = None):
         
         # 3. Extract features (Robustly)
         print("Step 3/4: Extracting audio features...")
-        audio_features = {
-            'pitch_mean': 0,
-            'energy_mean': 0,
-            'spectral_centroid': 2000, # Neutral default
-            'speaking_rate': 0
-        }
         try:
             extracted = extract_audio_features(audio_data, sr_val)
             audio_features.update(extracted)
@@ -323,8 +330,11 @@ def run_inference(audio_bytes: bytes, sample_rate: int = None):
         
         # 4. Detect emotion & sarcasm
         print("Step 4/4: Analyzing emotion...")
-        emotion, confidence = simple_emotion_detection(transcript, audio_features)
-        is_sarcastic, sarcasm_score, indicators = simple_sarcasm_detection(transcript, audio_features)
+        try:
+            emotion, confidence = simple_emotion_detection(transcript, audio_features)
+            is_sarcastic, sarcasm_score, indicators = simple_sarcasm_detection(transcript, audio_features)
+        except Exception as e:
+            print(f"Error in detection step: {e}")
         
         final_transcript = transcript if transcript not in ["Audio sample", "Could not transcribe audio", "Transcription failed"] else "Audio processed successfully"
         
@@ -334,12 +344,10 @@ def run_inference(audio_bytes: bytes, sample_rate: int = None):
     except Exception as e:
         print(f"\n{'='*60}")
         print(f"CRITICAL ERROR in run_inference: {str(e)}")
-        print(f"Error type: {type(e).__name__}")
         import traceback
-        print("Full traceback:")
         traceback.print_exc()
         print(f"{'='*60}\n")
-        # Return safe defaults instead of error message
-        return "neutral", 0.5, False, 0.0, "Audio processed with limited analysis", 0, 0, 0
+        return emotion, round(confidence, 2), is_sarcastic, round(sarcasm_score, 2), final_transcript, \
+               audio_features.get('pitch_mean', 0), audio_features.get('energy_mean', 0), audio_features.get('spectral_centroid', 2000)
 
 print("✓ Simplified inference engine initialized (No PyTorch required)")
