@@ -258,24 +258,40 @@ def run_inference(audio_bytes: bytes, sample_rate: int = None):
         except Exception as librosa_err:
             print(f"Librosa direct load failed: {librosa_err}")
             try:
-                # Try pydub if installed
-                from pydub import AudioSegment
-                import tempfile
-                import os
-                with tempfile.NamedTemporaryFile(delete=False) as tmp_in:
-                    tmp_in.write(audio_bytes)
-                    tmp_in_path = tmp_in.name
-                audio_segment = AudioSegment.from_file(tmp_in_path)
-                with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_out:
-                    tmp_out_path = tmp_out.name
-                audio_segment.export(tmp_out_path, format="wav")
-                audio_data, sr_val = librosa.load(tmp_out_path, sr=None)
-                os.unlink(tmp_in_path)
-                os.unlink(tmp_out_path)
-                print(f"✓ Audio loaded via pydub fallback")
-            except Exception as pydub_err:
-                print(f"Pydub fallback failed: {pydub_err}")
-                raise Exception("Could not load audio data with any available method")
+                # Try Scipy fallback (best for RAVDESS standard WAVs)
+                from scipy.io import wavfile
+                import io
+                sr_val, audio_data = wavfile.read(io.BytesIO(audio_bytes))
+                # Convert to float32 (standard for librosa)
+                if audio_data.dtype == np.int16:
+                    audio_data = audio_data.astype(np.float32) / 32768.0
+                elif audio_data.dtype == np.int32:
+                    audio_data = audio_data.astype(np.float32) / 2147483648.0
+                # Handle stereo
+                if len(audio_data.shape) > 1:
+                    audio_data = np.mean(audio_data, axis=1)
+                print(f"✓ Audio loaded via Scipy fallback (RAVDESS compatible)")
+            except Exception as scipy_err:
+                print(f"Scipy fallback failed: {scipy_err}")
+                try:
+                    # Final attempt with pydub
+                    from pydub import AudioSegment
+                    import tempfile
+                    import os
+                    with tempfile.NamedTemporaryFile(delete=False) as tmp_in:
+                        tmp_in.write(audio_bytes)
+                        tmp_in_path = tmp_in.name
+                    audio_segment = AudioSegment.from_file(tmp_in_path)
+                    with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp_out:
+                        tmp_out_path = tmp_out.name
+                    audio_segment.export(tmp_out_path, format="wav")
+                    audio_data, sr_val = librosa.load(tmp_out_path, sr=None)
+                    os.unlink(tmp_in_path)
+                    os.unlink(tmp_out_path)
+                    print(f"✓ Audio loaded via pydub fallback")
+                except Exception as pydub_err:
+                    print(f"Pydub fallback failed: {pydub_err}")
+                    raise Exception("Could not load audio data with any available method")
 
         # Ensure minimum length
         min_samples = int(0.5 * sr_val)
