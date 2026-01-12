@@ -1,0 +1,44 @@
+# Test files
+test_*.py
+diagnose_audio.py
+generate_test_audio.py
+download_nltk_data.py
+
+# Audio files
+*.wav
+*.mp3
+*.ogg
+*.m4a
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Vercel (not needed for Railway)
+vercel.json
+
+# Git
+.git/
+.gitignore
